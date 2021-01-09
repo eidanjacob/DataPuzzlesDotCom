@@ -1,0 +1,62 @@
+---
+title: "An Unusual Ransom"
+output: html_document
+---
+
+## SPOILERS BELOW!!! ##
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, cache = TRUE, message = FALSE, fig.width = 10, fig.height = 9)
+```
+
+```{r, package-import}
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(gridExtra)
+library(GGally)
+library(gganimate)
+```
+
+```{r, first-section-data}
+part1 = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/visualisation/chal1/chal_visu_1_q1_data.csv")
+```
+
+The given data are 2-dimensional points with labels x and y. There appeared to be a lot of overplotting near (0, 0), so I zoomed in there, uncovering the word "leafy." This was the first answer.
+
+```{r, visualization-1}
+part1 %>% ggplot(aes(x, y)) + geom_point(alpha = 0.1) + theme_bw() + ggtitle("Visualization With Transparency")
+part1 %>% filter(0 < x, x < 1500, -300 < y, y < 0) %>% ggplot(aes(x, y)) + geom_point() + theme_bw() + ggtitle("Visualization of Central Points")
+```
+
+```{r, second-section-data}
+part2 = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/visualisation/chal1/chal_visu_1_q2_data.csv")
+```
+
+The second data set has seven features, labeled 0 through 6. I ran pairwise correlations and plotted the resulting 2d plots, discovering a prancing unicorn. "unicorn" was the second answer.
+
+```{r, visualization-2}
+ggpairs(part2)
+```
+
+```{r, third-section-data}
+part3 = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/visualisation/chal1/chal_visu_1_q3_data.csv")
+```
+
+The third data set contains numbers labeled x and y as well as a third "mystery feature." I visualized the x and y coordinates spatially as in part 1 and colored the points according to their "mystery value" but this did not reveal anything obvious. I thought about combining two or more coordinates and tried to look for pairwise correlations in the combined values.
+
+```{r, third-section-visualization}
+part3 %>% ggplot(aes(x = x, y = y, color = mystery_feature)) + geom_point()
+part3 = part3 %>% mutate(x_plus = x + mystery_feature, x_minus = x - mystery_feature, y_plus = y + mystery_feature, y_minus = y - mystery_feature)
+ggpairs(part3)
+part3 %>% ggplot(aes(mystery_feature, y + mystery_feature)) + geom_point()
+```
+
+Then I thought about treating the mystery_feature value as a frame and viewing the x-y coordinates as an animation. Doing this created a stream of what looked like letters; slowing it down revealed the message containing the final message: "THE ANSWER IS CRUSH".
+
+```{r, animation}
+anim = part3 %>% ggplot(aes(x, y)) + geom_point() + transition_time(mystery_feature)
+animate(anim)
+```
+
+Using the three words together maps you to the final answer!
