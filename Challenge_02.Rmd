@@ -1,0 +1,58 @@
+---
+title: "Follow The Snake"
+output: html_document
+---
+
+## SPOILERS BELOW!!! ##
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE, cache = TRUE, message = FALSE)
+```
+
+```{r, package-import}
+library(ggplot2)
+library(RNiftyReg)
+library(magick)
+library(gganimate)
+```
+
+I first load the data set and label four snake images N, S, E, and W as indicated on the puzzle page.
+
+```{r, load-data}
+snakes = lapply(list.files("data-puzzles-assets-master/computervision/snakes"),
+                function(x){image_read(paste0("data-puzzles-assets-master/computervision/snakes/", x)) %>% image_quantize(colorspace = 'gray')})
+north = snakes[[2]]
+south = snakes[[18]]
+east = snakes[[1]]
+west = snakes[[14]]
+```
+
+For each image, I find which of the labeled snake images it is most similar to (using an image similarity function). The most similar image is used as a label.
+
+```{r, image-similarity}
+label_image = function(image){
+  sim_n = image_compare_dist(north, image)[[1]]
+  sim_s = image_compare_dist(south, image)[[1]]
+  sim_e = image_compare_dist(east, image)[[1]]
+  sim_w = image_compare_dist(west, image)[[1]]
+  sims = c(sim_n, sim_s, sim_e, sim_w)
+  label = c("N", "S", "E", "W")[which(sims == max(sims))]
+}
+snake_labels = unlist(lapply(snakes, label_image))
+```
+
+I start a path at the origin and follow the direction of each snake, spelling out the snake's name, "Cascabel" (with a few extra S's of course.)
+
+```{r, figuring-out-what-labels-mean}
+x_coord = 0
+y_coord = 0
+path_points = data.frame(t = 0, x = x_coord, y = y_coord)
+for(i in 1:length(snake_labels)){
+  label = snake_labels[i]
+  y_coord = ifelse(label == "N", y_coord + 1, ifelse(label == "S", y_coord - 1, y_coord))
+  x_coord = ifelse(label == "E", x_coord + 1, ifelse(label == "W", x_coord - 1, x_coord))
+  path_points[i+1,] = c(i, x_coord, y_coord)
+}
+path_points %>% ggplot(aes(x, y)) + geom_path()
+```
+
