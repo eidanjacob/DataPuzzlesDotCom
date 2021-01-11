@@ -3,26 +3,46 @@ title: "The Espresso Test"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Challenge 1
+
+The null hypothesis is that the probability of correct brand recognition `p` is `0.5`. The alternative is that `p > 0.5`. The code below finds the minimum sample size such that the probability of failing to reject the null hypothesis is below a set threshold (beta) for a given effect size and alpha. (I used the same parameters given in the third hint, my first choices (commented) were a little different).
+
+```{r}
+p0 = 0.5
+mde = 0.25 # 0.2
+alpha = 0.1
+beta = 0.20 # 0.25
+
+check_n = function(n){
+  # assume null is true. what are threshold values for rejection?
+  low_thresh = qbinom(alpha/2, n, p0) - 1
+  hi_thresh = n - low_thresh
+  # assume alternative is true - what is probability to fail to reject?
+  p_not_reject = sum(dbinom(low_thresh:hi_thresh, n, p0 + mde))
+  actual_alpha = sum(dbinom(0:low_thresh, n, p0))
+  return(p_not_reject<beta & actual_alpha<alpha)
+}
+
+n_trial = 1
+while(!check_n(n_trial)){
+  n_trial = n_trial + 1
+}
+n_trial
 ```
 
-## R Markdown
+## Challenge 2
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+20 trials are in. There is a bit of a hot streak toward the end, but it's not so dramatic that I am worried about the independence assumption being violated.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+found = c(0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1)
 ```
 
-## Including Plots
+Bayes' theorem comes in handy when updating prior beliefs. The conjugate prior for the binomial distribution is the beta distribution. According to the challenge the prior hypothesis should predict an average accuracy of 50%, but there aren't super strong arguments either way, so I will use a flat prior (`(alpha, beta) = (1, 1)`). The mean and median of this prior are both `0.5` which matches the null hypothesis.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+alpha = 1 + sum(found)
+beta = 1 + length(found) - sum(found)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+After the twenty trials are over, the update rule makes the new parameters (`r alpha`, `r beta`). This makes the new expected value for the roommate's average accuracy `r round(alpha / (alpha + beta), 3)`, with a standard deviation of `r round(sqrt((alpha * beta)/((alpha + beta)^2 * (alpha + beta + 1))), 3)`. The posterior probability that the roommate's accuracy is better than random chance (above one-half) is `r round(1 - qbeta(0.5, alpha, beta), 3)`. This certainly doesn't indicate that he's wrong beyond all doubt, but it seems like the roommate's claimed ability probably doesn't exist.
