@@ -1,0 +1,37 @@
+---
+title: "Lost and Found"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, fig.height = 6, fig.width = 10)
+library(readr)
+library(tidyverse)
+library(gridExtra)
+```
+
+Fit a polynomial to each data set and build a DD/MM/YYYY birthday from the coefficients.
+
+```{r}
+dd = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/regression/chal1/dd.csv")
+mm = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/regression/chal1/mm.csv")
+yyyy = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/regression/chal1/yyyy.csv")
+```
+
+```{r}
+p1 = dd %>% ggplot(aes(x, y)) + geom_point()
+p2 = mm %>% ggplot(aes(x, y)) + geom_point()
+p3 = yyyy %>% ggplot(aes(x, y)) + geom_point()
+grid.arrange(p1, p2 ,p3)
+```
+
+```{r}
+m1 = lm(y ~ x, dd)
+m2 = lm(y ~ x, mm)
+yyyy = yyyy %>% mutate(x2 = x^2, x3 = x^3, x4 = x^4)
+m3 = lm(y ~ x + x2 + x3 + x4, yyyy)
+summary(m1)
+summary(m2)
+summary(m3)
+```
+
