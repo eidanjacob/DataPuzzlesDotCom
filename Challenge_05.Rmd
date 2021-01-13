@@ -3,11 +3,15 @@ title: "Lost and Found"
 output: html_document
 ---
 
+### Part 1
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T, warning = F, message = F, fig.height = 6, fig.width = 10)
+knitr::opts_chunk$set(echo = T, warning = F, message = F, fig.height = 6, fig.width = 10, cache = T)
 library(readr)
 library(tidyverse)
 library(gridExtra)
+library(GGally)
+library(HDCI)
 ```
 
 Fit a polynomial to each data set and build a DD/MM/YYYY birthday from the coefficients.
@@ -33,5 +37,17 @@ m3 = lm(y ~ x + x2 + x3 + x4, yyyy)
 summary(m1)
 summary(m2)
 summary(m3)
+```
+
+You can find the professor's name by searching the web with the birthday.
+
+### Part 2
+
+Use a regularized regression to prevent overfitting; we find only three coefficients are greater than 0 in absolute value. They form the address.
+
+```{r}
+reg_p2 = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/regression/chal1/reg_p2.csv")
+addr = LassoOLS(reg_p2 %>% select(-y) %>% as.matrix(), reg_p2 %>% select(y) %>% as.matrix(), lambda = 1)
+names(reg_p2)[abs(addr$beta) > 0.1]
 ```
 

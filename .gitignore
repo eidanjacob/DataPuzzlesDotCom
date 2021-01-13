@@ -4,8 +4,9 @@
 .Ruserdata
 Challenge_01_cache
 Challenge_01_files
+Challenge_02_cache
+Challenge_05_cache
 *.png
 *.html
 *.zip
-Challenge_02_cache
 data-puzzles-assets-master
