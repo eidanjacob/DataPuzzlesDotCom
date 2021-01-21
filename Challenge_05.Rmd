@@ -48,6 +48,6 @@ Use a regularized regression to prevent overfitting; we find only three coeffici
 ```{r}
 reg_p2 = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/regression/chal1/reg_p2.csv")
 addr = LassoOLS(reg_p2 %>% select(-y) %>% as.matrix(), reg_p2 %>% select(y) %>% as.matrix(), lambda = 1)
-names(reg_p2)[abs(addr$beta) > 0.1]
+paste(names(reg_p2)[abs(addr$beta) > 0.1], collapse = " ")
 ```
 
