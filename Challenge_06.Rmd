@@ -1,0 +1,102 @@
+---
+title: "Sphinx Rebus"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, fig.height = 6, fig.width = 10, cache = T)
+library(readr)
+library(tidyverse)
+library(gridExtra)
+library(GGally)
+library(pROC)
+```
+
+```{r data}
+sphinx = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/ml/1/dataset.csv") %>% 
+  mutate(target_binary = factor(target_binary))
+train = sphinx %>% filter(str_detect(id, "train"))
+img = sphinx %>% filter(str_detect(id, "image"))
+```
+
+```{r EDA}
+train %>% ggplot(aes(x = Latitude, y = Longitude)) + 
+  geom_density_2d_filled(contour_var = "count") +
+  ggtitle("Distribution of Latitude and Longitude Values")
+
+train %>% ggplot(aes(x = MedInc, y = HouseAge, color = target_binary)) +
+  geom_point(alpha = 0.2) + ggtitle("Target value by MedInc and HouseAge")
+```
+
+The observations (from the data headings it seems safe to think each row corresponds to a a summary of a town or other small region) are clustered in two modes of Longitude and Latitude values. MedInc (I presume this means Median Income) does a pretty good job of separating 0 and 1 values in the target variable by itself. I still have to check other variables' relationship with the target but I think a linear model might be good enough.
+
+```{r more-EDA}
+train %>% select(c(HouseAge, AveRooms, AveBedrms)) %>% ggpairs()
+plot_age = train %>% ggplot(aes(x = Latitude, y = Longitude, z = HouseAge)) + 
+  stat_summary_hex() + 
+  ggtitle("Average House Age by Location")
+plot_pop = train %>% ggplot(aes(x = Latitude, y = Longitude, z = Population)) + 
+  stat_summary_hex() + 
+  ggtitle("Average Population by Location")
+plot_occ = train %>% ggplot(aes(x = Latitude, y = Longitude, z = AveOccup)) + 
+  stat_summary_hex() + 
+  ggtitle("Average House Occupancy by Location")
+plot_room = train %>% ggplot(aes(x = Latitude, y = Longitude, z = AveRooms)) + 
+  stat_summary_hex() + 
+  ggtitle("Average Number of Rooms per House by Location")
+grid.arrange(plot_age, plot_pop, plot_occ, plot_room)
+```
+
+Unsurprisingly, the average number of rooms and average number of bedrooms are highly correlated, and both variables individually have a strong positive skew. The characteristics of a typical house do not change much over different locations, save for a few small areas with large outliers in the rate of occupancy or the average number of rooms. Population sizes are similarly distributed though the outlying values of each variable occur in different places.
+
+I start with a naive logistic regression to predict the target_binary value.
+
+```{r lazy-model}
+lazy_model = glm(target_binary ~ MedInc + HouseAge + AveRooms + AveBedrms + Population + AveOccup + Latitude + Longitude, data = train, family = binomial)
+summary(lazy_model)
+plot(lazy_model)
+```
+
+We can see the naive model dramatically fails to fit one point in particular, let's take a look at its values and compare it to the typical:
+
+```{r weird-obs}
+knitr::kable(train[1687,])
+knitr::kable(summary(train))
+```
+
+I don't see what's weird about this one other than the somewhat-above-normal number of rooms, but I'll try another model without this point using the same formula and compare.
+
+```{r lazy-model-exclude-outlier}
+less_lazy_model = glm(target_binary ~ MedInc + HouseAge + AveRooms + AveBedrms + Population + AveOccup + Latitude + Longitude, data = train[-1687,], family = binomial)
+summary(less_lazy_model)
+plot(less_lazy_model)
+```
+
+I still have a single dramatic failure... I will try adding the log-values of variables that have skewed distributions.
+
+```{r log-model}
+log_model = glm(target_binary ~ MedInc + log(MedInc) + HouseAge + AveRooms + log(AveRooms) + AveBedrms + log(AveBedrms) + Population + log(Population) + AveOccup + log(AveOccup) + Latitude + Longitude, data = train, family = binomial)
+summary(log_model)
+plot(log_model)
+```
+
+This is a dramatic improvement in that the scale of the residuals has decreased several orders of magnitude. Let's look at the ROC curve to see if it is any good at prediction:
+
+```{r roc}
+roc(train$target_binary, log_model$fitted.values)
+plot(roc(train$target_binary, log_model$fitted.values))
+```
+
+This might be good enough to see an image hidden in the test set, so I'll give it a shot.
+
+```{r predictions}
+img$target_binary = predict(log_model, img, type = "response")
+xy = unlist(regmatches(img$id, gregexpr('\\(?[0-9,.]+', img$id)))
+img$x = as.numeric(xy[seq(1, length(xy), 2)])
+img$y = as.numeric(xy[seq(2, length(xy), 2)])
+noisy = ggplot(img, aes(y = -x, x = y, color = target_binary)) + geom_point(size = 1) + theme(legend.position = "none") + ggtitle("Raw Values")
+rounded = ggplot(img, aes(y = -x, x = y, color = round(target_binary))) + geom_point(size = 1) + theme(legend.position = "none") + ggtitle("Rounded Values")
+grid.arrange(noisy, rounded, ncol = 2)
+```
+
+The image is pretty noisy but I can see the rebus puzzle well enough to solve it.
