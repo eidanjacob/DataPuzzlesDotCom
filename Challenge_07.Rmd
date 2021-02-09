@@ -1,0 +1,87 @@
+---
+title: "Treasure Hunt"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, fig.height = 6, fig.width = 10, cache = T)
+library(readr)
+library(tidyverse)
+library(cppRouting)
+```
+
+## Part 1
+
+```{r data}
+temps <- read_delim("https://www.data.gouv.fr/en/datasets/r/882ceb4e-976d-48f7-867a-3efe307c0af3", 
+                    ";", escape_double = FALSE, col_names = FALSE, 
+                    comment = "#", trim_ws = TRUE) %>% select(1:7)
+names(temps) = c("Point", "Lat", "Long", "Context", "Avg", "Month", "Temp")
+```
+
+Having downloaded monthly average temperatures for locations in France I will rank them by how closely they match the specified annual temperature profile. A closely-matching point near a city with population 45K is probably the answer.
+
+```{r temp_month}
+temps_wide = temps %>% group_by(Point, Avg, Lat, Long) %>% summarise("M1" = sum(Temp * (Month == 1)),
+                                                                     "M2" = sum(Temp * (Month == 2)),
+                                                                     "M3" = sum(Temp * (Month == 3)),
+                                                                     "M4" = sum(Temp * (Month == 4)),
+                                                                     "M5" = sum(Temp * (Month == 5)),
+                                                                     "M6" = sum(Temp * (Month == 6)),
+                                                                     "M7" = sum(Temp * (Month == 7)),
+                                                                     "M8" = sum(Temp * (Month == 8)),
+                                                                     "M9" = sum(Temp * (Month == 9)),
+                                                                     "M10" = sum(Temp * (Month == 10)),
+                                                                     "M11" = sum(Temp * (Month == 11)),
+                                                                     "M12" = sum(Temp * (Month == 12))) %>%
+  mutate(SqDiff = (M1-5.6)^2 + (M2-5.9)^2 + (M3-8.1)^2 + (M4-10.2)^2 + (M5-13)^2 + (M6-15.7)^2 + (M7-17.4)^2 + (M8-17.4)^2 + (M9-15.9)^2 + (M10-12.5)^2 + (M11-8.7)^2 + (M12-6.5)^2) %>% arrange(SqDiff)
+temps_wide %>% ggplot(aes(x=Long, y=Lat, z = -SqDiff)) + stat_summary_hex(bins = 100) + scale_fill_viridis_c(option="magma")
+```
+
+The map above shows the negative squared difference between locations' monthly average temperature and the provided profile. The northern coast seems to match the temperature profile the best. I was able to find the city with just a few guesses.
+
+## Part 2
+
+```{r graph-setup}
+edges = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/misc/treasure/graph_data_st_malo.csv")
+names(edges) = c("From", "To", "Cost", "Label")
+graph = makegraph(edges[,-4], directed = F)
+```
+
+```{r Dijkstra}
+path = get_multi_paths(graph, "START", "END")[[1]][[1]]
+```
+
+```{r Names}
+ans = ""
+for(i in 1:(length(path) - 1)){
+  lbl = edges %>% filter((From == path[i] & To == path[i+1]) | 
+                     (From == path[i+1] & To == path[i])) %>% select("Label")
+  ans = paste0(substring(lbl[[1]][1], 1, 1), ans)
+}
+ans
+```
+
+## Part 3
+
+```{r marbles-data}
+marbles = read_csv("https://raw.githubusercontent.com/hyperc54/data-puzzles-assets/master/misc/treasure/marbles_quizz.csv")
+ggplot(data = marbles, aes(x = weight, fill = color)) + geom_density(alpha = 0.3)
+```
+
+The one weight variable doesn't seem to neatly split the weights, but the values seem to have a 3-digit integer component and a 3-digit decimal component. I will split these and then try looking for patterns in color.
+
+```{r splitting-number}
+marbles = marbles %>% mutate(integer_part = floor(weight),
+                             decimal_part = (weight - floor(weight)) * 1000)
+
+ggplot(marbles, aes(x = integer_part, y = decimal_part, color = color)) + geom_point()
+```
+
+This is an easy linear split along y=x.
+
+```{r}
+marbles_test = marbles %>% filter(color == "?")
+nrow(marbles_test %>% filter(integer_part > decimal_part))
+```
+

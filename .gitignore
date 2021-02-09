@@ -11,3 +11,11 @@ Challenge_05_cache
 *.zip
 data-puzzles-assets-master
 Challenge_06_cache
+Challenge07/Tempe_RCP8.5_mensuel.txt
+*.txt
+*.RData
+*.rdb
+*.rdx
+*.xls
+.DS_Store
+Challenge_07_cache/html/__packages
